@@ -1,0 +1,176 @@
+<!doctype html>
+<!--[if lt IE 7 ]> <html lang="en" class="ie6"> <![endif]--> <!--[if IE 7 ]>    <html lang="en" class="ie7"> <![endif]--> <!--[if IE 8 ]>    <html lang="en" class="ie8"> <![endif]--> <!--[if IE 9 ]>    <html lang="en" class="ie9"> <![endif]-->
+<!--[if (gt IE 9)|!(IE)]><!--> <html lang="en"> <!--<![endif]-->
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+
+  <title></title>
+  <meta name="description" content="">
+  <meta name="author" content="">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="shortcut icon" href="/favicon.ico">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/style.css?v=2">
+  <link rel="stylesheet" href="http://code.jquery.com/ui/1.9.0/themes/base/jquery-ui.css" />
+    <script src="http://code.jquery.com/jquery-1.8.2.js"></script>
+    <script src="http://code.jquery.com/ui/1.9.0/jquery-ui.js"></script>
+
+  <!--[if lt IE 9]>
+  <script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+  <![endif]-->
+ <style>
+ d = [];
+    .ui-autocomplete-loading {
+        background: white url('http://jqueryui.com/images/ui-anim_basic_16x16.gif') right center no-repeat;
+    }
+    #title { width: 25em; }
+    </style>
+    
+    <script>
+    var movieDB = {
+      api_key: 'afb9d45319874fb355ce87ffaaa374c7',
+      searchURL: "http://api.themoviedb.org/3/search/movie"
+    }
+
+    function args(url) {
+        return {
+          url: url,
+          dataType:"json"
+        }
+    }
+
+    var GoWatchIt = {
+      
+      reviewsArgs: function(id) {return args("http://developers.gowatchit.com/api/31337/reviews/" + id)},
+      availabilitiesArgs: function(id) {return args("http://developers.gowatchit.com/api/31337/availabilities/" + id)},
+      idArgs: function(title) {return args("http://developers.gowatchit.com/api/31337/search/title/" + title)},
+     
+
+    }
+
+    $(function() {
+        function log( message ) {
+            $( "<div>" ).text( message ).prependTo( "#log" );
+        }
+ 
+        $( "#title" ).autocomplete({
+            source: function( request, response ) {
+                $.ajax({
+                    url: "http://api.themoviedb.org/3/search/movie",
+                    dataType: "json",
+                    data: {
+                        api_key: 'afb9d45319874fb355ce87ffaaa374c7',
+                        query: request.term
+                    },
+                    success: function( data ) {
+                        response( $.map( data.results, function( item ) {
+                            return {
+                                label: item.title + '(' + item.release_date.split('-')[0] + ')',
+                                value: item.title
+                            }
+                        }));
+                    }
+                });
+            },
+            minLength: 2,
+            select: function( event, ui ) {
+                if (ui.item) {
+                  $('#movie-name').text(ui.item.label);
+                   $('#movie-name').show('puff');
+                   $('#accordion').show('fold');
+
+                   //update availability data
+                   if (ui.item.value) 
+                    $.ajax(GoWatchIt.idArgs(ui.item.value)).success(function(data) {
+                      //grab the first item in the response, since it is most likely the most relevant.
+                      //if you want better accuracy, you may want to iterate through the responses, possibly looking at release year. 
+                      
+                      //inject availability content into availability div
+                      $.ajax(GoWatchIt.availabilitiesArgs(data[0].id)).success(function(aData) {
+                        $('#availabilities').html("");
+                        $.each(aData, function(platform, avail) {
+                          //add each platform
+                        
+                          $('#availabilities').add('p').html("<b>" + platform + ":</b>");
+                          $.each(avail, function(index, a) {
+                            aa = a;
+                            $.each(a.availabilities, function(index, fullAvail) {
+                              var sale_info = fullAvail.sale_info
+                              sale_info = sale_info == "" ? "Click for more info" : sale_info ;
+                              $('#availabilities').append("<br/>" + a.provider + "(<a href='" + a.url + "'>" + sale_info + "</a>)" );
+                            })
+                            
+                          })
+                        })
+                      });
+
+                      //inject availability content into review div
+
+                   });
+                }
+                  //log("Availabilities For: " + ui.item.label);
+            },
+            open: function() {
+                $( this ).removeClass( "ui-corner-all" ).addClass( "ui-corner-top" );
+            },
+            close: function() {
+                $( this ).removeClass( "ui-corner-top" ).addClass( "ui-corner-all" );
+            }
+        });
+        
+        //display builder functions
+
+    });
+
+
+
+    $(document).ready(function() {
+      $('#accordion').accordion({ 
+        collapsible: true,
+        heightStyle: "content",
+      });
+      $('#accordion').hide(); // hide until user selects a movie
+      $('movie-name').hide();
+    });
+    </script>
+</head>
+<body>
+  <div id='container'>
+<h1>Movie Mashup with JQuery</h1>
+<hr/>
+
+<div class="ui-widget">
+    <label for="title">Search for movie title: </label>
+    <input id="title" />
+</div>
+
+<br/>
+<h3 id='movie-name' class="ui-widget-header ui-corner-all"></h3>
+ 
+<!-- accordian html -->
+<div id="accordion">
+   <h3>Availabilities</h3>
+    <div id='availabilities'>
+      <img src="http://cdn.jsdelivr.net/wp-advanced-ajax-page-loader/2.5.12/loaders/Grey Squares Loading Text.gif"/>
+        <p>Nam enim risus, molestie et, porta ac, aliquam ac, risus.
+        Quisque lobortis.Phasellus pellentesque purus in massa.</p>
+        <ul>
+            <li>List item one</li>
+            <li>List item two</li>
+            <li>List item three</li>
+        </ul>
+    </div>
+    <h3>Reviews</h3>
+    <div id='reviews'>
+      <img src="http://cdn.jsdelivr.net/wp-advanced-ajax-page-loader/2.5.12/loaders/Grey Squares Loading Text.gif"/>
+    </div>
+</div>
+
+<hr/>
+Powered by <a href="http://developers.gowatchit.com" target="_blank">GoWatchIt</a> & <a href="http://themoviedb.org" target="_blank">themoviedb.org</a>
+</div>
+</body>
+</html>
